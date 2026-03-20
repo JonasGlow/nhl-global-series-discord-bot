@@ -1,0 +1,6 @@
+todo.txt
+.venv
+.env
+**/__pycache__/
+.python-version
+data/
