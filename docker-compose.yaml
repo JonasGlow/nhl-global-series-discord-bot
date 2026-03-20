@@ -1,7 +1,7 @@
 services:
   nhl_bot:
     build:
-      context: "https://${GITHUB_TOKEN}@github.com/JonasGlow/nhl-global-series-discord-bot.git#main"
+      context: "https://github.com/JonasGlow/nhl-global-series-discord-bot.git#main"
     env_file:
       - .env
     volumes:
