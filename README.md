@@ -49,7 +49,7 @@ uv run python -m nhl_global_series_discord_bot.main
 Make sure a `.env` file is present on the server, then run:
 
 ```bash
-GITHUB_TOKEN=your_token docker compose up -d
+docker compose up -d
 ```
 
 The `data/` directory is mounted as a volume to persist `state.json` across container restarts.
