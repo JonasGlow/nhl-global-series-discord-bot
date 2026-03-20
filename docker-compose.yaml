@@ -1,0 +1,9 @@
+services:
+  nhl_bot:
+    build:
+      context: "https://${GITHUB_TOKEN}@github.com/JonasGlow/nhl-global-series-discord-bot.git#main"
+    env_file:
+      - .env
+    volumes:
+      - /mnt/disks/SanDisk_Portable_SSD/appdata/nhl_bot:/nhl-global-series-discord-bot/data
+    restart: unless-stopped

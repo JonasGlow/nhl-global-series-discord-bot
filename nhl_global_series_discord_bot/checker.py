@@ -10,7 +10,7 @@ from nhl_global_series_discord_bot.utils.config import settings
 
 logger = logging.getLogger(__name__)
 
-STATE_FILE = Path("state.json")
+STATE_FILE = Path("data/state.json")
 
 # Live Nation event pages for both Düsseldorf games
 LIVE_NATION_EVENTS = [
@@ -40,9 +40,9 @@ class TicketResult:
     status: str  # z.B. "onsale", "available", "presale"
     price_info: str = ""
 
-
 def _load_state() -> dict:
     if not STATE_FILE.exists():
+        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)  # Create data/ if it doesn't exist
         _save_state({})
         return {}
     content = STATE_FILE.read_text().strip()
