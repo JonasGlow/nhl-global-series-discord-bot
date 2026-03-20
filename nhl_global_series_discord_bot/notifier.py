@@ -2,7 +2,7 @@ import discord
 import logging
 from nhl_global_series_discord_bot.checker import TicketResult
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 STATUS_EMOJI = {
     "onsale": "🟢",
@@ -37,9 +37,9 @@ class Notifier:
 
         try:
             await self.channel.send(embed=embed)
-            log.info("Healthcheck message sent.")
+            logger.info("Healthcheck message sent.")
         except discord.HTTPException as e:
-            log.error(f"Error sending healthcheck message: {e}")
+            logger.error(f"Error sending healthcheck message: {e}")
 
     async def send_alert(self, result: TicketResult):
         emoji = _status_emoji(result.status)
@@ -60,6 +60,6 @@ class Notifier:
         mention = f"<@{self.user_id}>"
         try:
             await self.channel.send(content=f"{mention} New ticket info!", embed=embed)
-            log.info(f"Alert sent to channel {self.channel.id}")
+            logger.info(f"Alert sent to channel {self.channel.id}")
         except discord.HTTPException as e:
-            log.error(f"Error sending alert: {e}")
+            logger.error(f"Error sending alert: {e}")

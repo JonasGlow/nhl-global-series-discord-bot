@@ -13,7 +13,8 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING) # To remove apikey print later on
 
 
 class NHLBot(commands.Bot):
@@ -25,19 +26,19 @@ class NHLBot(commands.Bot):
         self.notifier: Notifier | None = None
 
     async def setup_hook(self):
-        log.info("Bot wird gestartet...")
+        logger.info("Bot is starting...")
 
     async def on_ready(self):
-        log.info(f"Eingeloggt als {self.user} (ID: {self.user.id})")
+        logger.info(f"Logged in as {self.user} (ID: {self.user.id})")
 
         channel = self.get_channel(settings.discord_channel_id)
         if channel is None:
-            log.error(f"Channel {settings.discord_channel_id} nicht gefunden!")
+            logger.error(f"Channel {settings.discord_channel_id} not found!")
             return
 
         self.notifier = Notifier(channel, settings.discord_user_id)
 
-        # Scheduler starten
+        # Start scheduler
         self.scheduler.add_job(
             self.run_check,
             CronTrigger(hour=settings.check_hour, minute=0, timezone="Europe/Berlin"),
@@ -45,24 +46,24 @@ class NHLBot(commands.Bot):
             replace_existing=True,
         )
         self.scheduler.start()
-        log.info(f"Scheduler läuft – täglicher Check um {settings.check_hour}:00 Uhr")
+        logger.info(f"Scheduler running - daily check at {settings.check_hour}:00 p.m.")
 
-        # Beim Start direkt einmal prüfen
+        # Check for updates when starting
         await self.run_check()
 
     async def run_check(self):
-        log.info("Starting ticket check...")
+        logger.info("Starting ticket check...")
         try:
             results = await self.checker.check_all()
             if results:
-                log.info(f"{len(results)} new result(s) found!")
+                logger.info(f"{len(results)} new result(s) found!")
                 for result in results:
                     await self.notifier.send_alert(result)
             else:
-                log.info("No new ticket info found.")
+                logger.info("No new ticket info found.")
                 await self.notifier.send_healthcheck()
         except Exception as e:
-            log.error(f"Error during check: {e}", exc_info=True)
+            logger.error(f"Error during check: {e}", exc_info=True)
 
 
 async def main():

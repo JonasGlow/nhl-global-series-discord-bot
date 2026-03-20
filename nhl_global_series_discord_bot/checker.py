@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from nhl_global_series_discord_bot.utils.config import settings
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 STATE_FILE = Path("state.json")
 
@@ -16,13 +16,13 @@ STATE_FILE = Path("state.json")
 LIVE_NATION_EVENTS = [
     {
         "url": "https://www.livenation.de/event/nhl-global-series-d%C3%BCsseldorf-d%C3%BCsseldorf-tickets-edp1659803",
-        "name": "NHL Global Series Düsseldorf – Game 1 (Dec 18)",
+        "name": "NHL Global Series Düsseldorf - Game 1 (Dec 18)",
         "date": "December 18, 2026",
         "state_key": "ln_dusseldorf_game1",
     },
     {
         "url": "https://www.livenation.de/event/nhl-global-series-d%C3%BCsseldorf-d%C3%BCsseldorf-tickets-edp1659804",
-        "name": "NHL Global Series Düsseldorf – Game 2 (Dec 20)",
+        "name": "NHL Global Series Düsseldorf - Game 2 (Dec 20)",
         "date": "December 20, 2026",
         "state_key": "ln_dusseldorf_game2",
     },
@@ -42,10 +42,12 @@ class TicketResult:
 
 
 def _load_state() -> dict:
-    if STATE_FILE.exists():
-        content = STATE_FILE.read_text().strip()
-        if content:
-            return json.loads(content)
+    if not STATE_FILE.exists():
+        _save_state({})
+        return {}
+    content = STATE_FILE.read_text().strip()
+    if content:
+        return json.loads(content)
     return {}
 
 
@@ -54,7 +56,7 @@ def _save_state(state: dict):
 
 
 def _is_new(key: str, value: str, state: dict) -> bool:
-    """Gibt True zurück wenn sich der Wert geändert hat oder neu ist."""
+    """Return True if the value changed or is new."""
     return state.get(key) != value
 
 
@@ -79,7 +81,7 @@ class TicketChecker:
         return results
 
     async def _check_ticketmaster(self, client: httpx.AsyncClient) -> list[TicketResult]:
-        """Fragt die Ticketmaster Discovery API ab."""
+        """Queries the Ticketmaster Discovery API."""
         params = {
             "apikey": settings.ticketmaster_api_key,
             "keyword": settings.tm_keyword,
@@ -94,24 +96,24 @@ class TicketChecker:
             resp.raise_for_status()
             data = resp.json()
         except Exception as e:
-            log.error(f"Ticketmaster API Fehler: {e}")
+            logger.error(f"Ticketmaster API Error: {e}")
             return []
 
         events = data.get("_embedded", {}).get("events", [])
         if not events:
-            log.info("Ticketmaster: Keine Events gefunden.")
+            logger.info("Ticketmaster: Found no events.")
             return []
 
         results = []
         for event in events:
-            name = event.get("name", "Unbekanntes Event")
+            name = event.get("name", "Unknown Event")
             event_id = event.get("id", name)
             url = event.get("url", "")
             dates = event.get("dates", {})
-            date_str = dates.get("start", {}).get("localDate", "unbekannt")
+            date_str = dates.get("start", {}).get("localDate", "unknown")
             status = dates.get("status", {}).get("code", "unknown")
 
-            # Preisinformationen (falls vorhanden)
+            # Pricing information (if given)
             price_info = ""
             price_ranges = event.get("priceRanges", [])
             if price_ranges:
@@ -122,7 +124,7 @@ class TicketChecker:
             state_value = f"{status}|{price_info}"
 
             if _is_new(state_key, state_value, self.state):
-                log.info(f"Ticketmaster: Neue Info für '{name}' – Status: {status}")
+                logger.info(f"Ticketmaster: New info for '{name}' - Status: {status}")
                 self.state[state_key] = state_value
                 results.append(
                     TicketResult(
@@ -143,21 +145,25 @@ class TicketChecker:
             resp = await client.get(event["url"], headers={"User-Agent": "Mozilla/5.0"})
             resp.raise_for_status()
         except Exception as e:
-            log.error(f"Live Nation scraper error for {event['name']}: {e}")
+            logger.error(f"Live Nation scraper error for {event['name']}: {e}")
             return None
 
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Look for ticket status button
-        status_text = "unknown"
-        for btn in soup.find_all(["button", "a"]):
-            text = btn.get_text(strip=True).lower()
-            if any(kw in text for kw in ["ticket", "kaufen", "registrieren", "unavailable", "sold out"]):
-                status_text = text
-                break
+        # Determine status based on known Live Nation page section headings
+        page_text = soup.get_text(separator=" ", strip=True).lower()
+
+        if "tickets are currently unavailable" in page_text:
+            status_text = "unavailable"
+        elif "tickets kaufen" in page_text:
+            status_text = "on sale"
+        elif "registrieren" in page_text:
+            status_text = "registration open"
+        else:
+            status_text = "unknown"
 
         if _is_new(event["state_key"], status_text, self.state):
-            log.info(f"Live Nation: Status changed to '{status_text}' for {event['name']}")
+            logger.info(f"Live Nation: Status changed to '{status_text}' for {event['name']}")
             self.state[event["state_key"]] = status_text
             return TicketResult(
                 source="Live Nation",
